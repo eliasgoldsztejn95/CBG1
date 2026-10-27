@@ -40,6 +40,12 @@ ROLE_EN = {
     "דוקטורנט": "PhD student",
     "פוסטדוק": "Postdoc",
 }
+BASIS_EN = {
+    "נמסר": "Given",
+    "נמסר כעתידי": "Given as future work",
+    "נמסר כיעד": "Given as a goal",
+    "פירוק מוצע": "Proposed breakdown",
+}
 UNASSIGNED_EN = "Unassigned"
 UNASSIGNED_HE = "טרם נקבע"
 
@@ -58,6 +64,9 @@ STRINGS = {
 
     "by_area":      {"he": "התקדמות לפי תחום",         "en": "Progress by area"},
     "by_person":    {"he": "עומס לפי אחראי",           "en": "Load by owner"},
+    "by_status":    {"he": "כל תתי־המשימות לפי סטטוס",  "en": "All subtasks by status"},
+    "tap_open":     {"he": "לחצו על סטטוס כדי לראות את המשימות שבו.",
+                     "en": "Tap a status to see the tasks in it."},
     "progress":     {"he": "אחוז השלמה",               "en": "Completion"},
     "no_tasks":     {"he": "אין משימות התואמות לסינון.", "en": "No tasks match the filter."},
 
@@ -133,6 +142,16 @@ def area_in(value: str, lang: str) -> str:
         return value
     back = {v: k for k, v in AREA_EN.items()}
     return back.get(value, value)
+
+
+def basis_out(value: str, lang: str) -> str:
+    return BASIS_EN.get(value, value) if lang == "en" else value
+
+
+def basis_in(value: str, lang: str) -> str:
+    if lang != "en":
+        return value
+    return {v: k for k, v in BASIS_EN.items()}.get(value, value)
 
 
 def role_out(value: str, lang: str) -> str:

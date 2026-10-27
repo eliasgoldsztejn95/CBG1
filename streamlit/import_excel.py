@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 import storage          # stdlib-only at import time; keeps the column list single-source
+import translations     # the one-time English for the workbook's free text
 
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -98,7 +99,11 @@ def read_workbook(path):
         # have the area filled in and nothing else. Real rows are the ones with an id.
         if r < 7 or not c.get(1):
             continue
+        en = translations.TASKS_EN.get(c.get(1, ""), {})
         tasks.append(storage.normalise({
+            "title_en": en.get("title", ""),
+            "deliverable_en": en.get("deliverable", ""),
+            "notes_en": en.get("notes", ""),
             "id": c.get(1, ""), "area": c.get(2, ""), "title": c.get(3, ""),
             "owner": c.get(4, ""), "status": c.get(5, ""),
             "due": _serial_to_date(c.get(6, "")), "deliverable": c.get(7, ""),
@@ -117,8 +122,10 @@ def read_workbook(path):
             continue
         if not c.get(1) or c.get(1) == "נקודות להשלמה":
             break                                  # roster ends at the notes block
-        people.append({"name": c.get(1, ""), "role": c.get(2, ""),
-                       "capacity": c.get(3, "")})
+        nm = c.get(1, "")
+        people.append({"name": nm,
+                       "name_en": translations.NAMES_EN.get(nm, nm),
+                       "role": c.get(2, ""), "capacity": c.get(3, "")})
     return tasks, people
 
 

@@ -37,9 +37,26 @@ from typing import Any
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-TASK_COLS = ["id", "area", "title", "owner", "status", "due", "deliverable",
-             "depends_on", "basis", "notes", "updated_at", "updated_by"]
-PEOPLE_COLS = ["name", "role", "capacity"]
+# The three free-text fields are stored in BOTH languages. Hebrew stays canonical
+# (statuses, areas and the owner field are Hebrew); the *_en columns are the English
+# the team can read and correct. An empty *_en falls back to the Hebrew at render
+# time, so a task added without a translation is never blank on the English board.
+TASK_COLS = ["id", "area", "title", "title_en", "owner", "status", "due",
+             "deliverable", "deliverable_en", "depends_on", "basis",
+             "notes", "notes_en", "updated_at", "updated_by"]
+PEOPLE_COLS = ["name", "name_en", "role", "capacity"]
+
+# Which field to read for a language, and what to fall back to.
+LOCALISED = {"title": "title_en", "deliverable": "deliverable_en", "notes": "notes_en"}
+
+
+def localised(row, field, lang):
+    """The field in `lang`, falling back to the Hebrew so nothing renders blank."""
+    if lang == "en":
+        alt = (row.get(LOCALISED.get(field, "")) or "").strip()
+        if alt:
+            return alt
+    return (row.get(field) or "").strip()
 
 TASKS_WS, PEOPLE_WS = "tasks", "people"
 
