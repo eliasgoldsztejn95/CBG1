@@ -23,31 +23,73 @@ so at the top of the page. That is for development only — see the warning belo
 
 ## Deploy it so the team can use it
 
-### 1. Create the sheet
+Pick one shared backend. Both are free. **Option A is much less setup** and is the
+right choice when edits are occasional, which is the usual case for a task board.
 
-Make a Google Sheet, note the id from its URL
+---
+
+### Option A — GitHub (recommended)
+
+The task CSV lives in your own repo and every edit becomes a commit. No second
+service, no Google Cloud project: one token and you are done. You also get history
+and undo for free, which is otherwise the app's weakest point.
+
+**1. Make a `data` branch.** The data must NOT live on the branch Streamlit deploys
+from — Community Cloud redeploys on every push to that branch, so each save would
+restart the app and kick everyone off.
+
+```bash
+git switch --orphan data        # an empty branch, no code on it
+mkdir -p data && cp tasks_seed.csv data/tasks.csv \
+                   && cp people_seed.csv data/people.csv
+git add data && git commit -m "task board data" && git push -u origin data
+git switch main
+```
+
+**2. Make a fine-grained token.** GitHub → Settings → Developer settings →
+Personal access tokens → Fine-grained tokens. Scope it to **this repository only**,
+with **Repository permissions → Contents: Read and write**. Nothing else. Copy it.
+
+**3. Put it in Streamlit secrets:**
+
+```toml
+[github]
+token = "github_pat_..."
+repo = "your-user/your-repo"
+branch = "data"
+tasks_path = "data/tasks.csv"
+people_path = "data/people.csv"
+```
+
+The header will then read **GitHub — משותף**.
+
+> The token can write to that repo. Keep it in Streamlit secrets only, never in the
+> code, and revoke it from GitHub if it ever leaks.
+
+---
+
+### Option B — Google Sheets
+
+Choose this if you want the team to be able to edit the data as a spreadsheet as
+well as through the app. It is more setup.
+
+**1.** Create a Google Sheet; note the id from its URL
 (`docs.google.com/spreadsheets/d/<THIS>/edit`).
 
-### 2. Create a service account
+**2.** In Google Cloud Console: enable the **Google Sheets API** and **Google Drive
+API**, create a service account, add a JSON key, download it. Then **share the sheet
+with the service account's email as Editor** — the step people miss; without it
+every read fails with a permissions error.
 
-In Google Cloud Console: enable the **Google Sheets API** and **Google Drive API**,
-create a service account, add a JSON key, download it. Then **share the sheet with
-the service account's email address, as Editor** — this is the step people miss;
-without it every read returns a permissions error.
-
-### 3. Load the data, once
+**3.** Load the data once:
 
 ```bash
 export SHEET_KEY=<the id from the URL>
 export GOOGLE_APPLICATION_CREDENTIALS=service_account.json
-python3 import_excel.py        # only if cbg1.xlsx changed
 python3 bootstrap_sheet.py
 ```
 
-### 4. Deploy
-
-Push to GitHub, then on [share.streamlit.io](https://share.streamlit.io) point a new
-app at `src/streamlit/app.py`. In **Settings → Secrets** paste:
+**4.** Streamlit secrets:
 
 ```toml
 sheet_key = "<the id from the URL>"
@@ -62,11 +104,24 @@ client_id = "..."
 token_uri = "https://oauth2.googleapis.com/token"
 ```
 
-(Copy the fields straight out of the JSON key. Keep the `\n` escapes in
-`private_key`.) The header of the app will then read **Google Sheets — משותף**.
+(Copy the fields straight out of the JSON key; keep the `\n` escapes in
+`private_key`.) The header will read **Google Sheets — משותף**.
 
-> **Never commit `service_account.json`.** Add it to `.gitignore`. Anyone holding
-> that file can read and write the sheet.
+> **Never commit `service_account.json`** — it is already in `.gitignore`.
+
+---
+
+### Then deploy
+
+Push to GitHub and point a new app on [share.streamlit.io](https://share.streamlit.io)
+at `src/streamlit/app.py`, adding the secrets above under **Settings → Secrets**.
+`storage.get_store()` picks GitHub if it is configured, else Google Sheets, else
+local files — and the header always says which, so a misconfiguration shows up
+rather than looking like it works.
+
+`requirements.txt` may sit either beside the entrypoint or at the repository root —
+Community Cloud searches the entrypoint's own directory first, then the root. So a
+copy next to `app.py` is enough; a root copy is not needed.
 
 ## Things worth knowing before you change it
 
@@ -87,16 +142,19 @@ indistinguishable to most colourblind viewers. Every status therefore carries an
 icon and its word, and no chart encodes status by hue: the bars measure progress
 and counts. Keep it that way if you add views.
 
-**Writes are per row.** `storage.upsert_task` rewrites only the row that changed,
-re-reading the id column at write time. Rewriting the whole sheet from the
-snapshot taken at page load would throw away anything saved in between.
+**Concurrent saves.** On Google Sheets only the changed row is written, re-reading
+the id column at write time, so edits to different tasks cannot clobber each other;
+two people on the SAME task is last-write-wins. On GitHub the file's SHA makes a
+stale write fail outright, and the change is re-applied to the fresh file and
+retried — so the loser of a race still lands rather than being silently dropped.
 
 **Ids are max+1.** Deleting a middle task is safe. Deleting the *highest* id frees
 that number for reuse — see the note in `storage.next_id` if that starts to matter.
 
 ## Not covered
 
-- No undo. Google Sheets' own version history is the backstop (File → Version
-  history), which is one reason to prefer it.
+- No undo in the app. The backend is the backstop: on GitHub every edit is a commit
+  (`git revert`, or the file's history on github.com); on Google Sheets it is File →
+  Version history.
 - The name picker is honour-system, as asked: anyone can pick any name. It records
   who *said* they made a change, not who did.

@@ -13,13 +13,17 @@ import sys
 import xml.etree.ElementTree as ET
 import zipfile
 
+import storage          # stdlib-only at import time; keeps the column list single-source
+
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# Column order as it stands in the "משימות" sheet.
-TASK_COLS = ["id", "area", "title", "owner", "status", "due",
-             "deliverable", "depends_on", "basis", "notes"]
-PEOPLE_COLS = ["name", "role", "capacity"]
+# Taken from storage rather than restated, so the seed file always has exactly the
+# columns the app writes. Stating them here independently left the seed two columns
+# short (updated_at, updated_by) -- harmless, since the app fills blanks in, but it
+# meant the committed data file changed shape on the first save.
+TASK_COLS = storage.TASK_COLS
+PEOPLE_COLS = storage.PEOPLE_COLS
 
 
 def _col(ref):
@@ -94,12 +98,12 @@ def read_workbook(path):
         # have the area filled in and nothing else. Real rows are the ones with an id.
         if r < 7 or not c.get(1):
             continue
-        tasks.append({
+        tasks.append(storage.normalise({
             "id": c.get(1, ""), "area": c.get(2, ""), "title": c.get(3, ""),
             "owner": c.get(4, ""), "status": c.get(5, ""),
             "due": _serial_to_date(c.get(6, "")), "deliverable": c.get(7, ""),
             "depends_on": c.get(8, ""), "basis": c.get(9, ""), "notes": c.get(10, ""),
-        })
+        }))
 
     people = []
     srows = _rows(z, sheets["תמונת מצב"], shared)

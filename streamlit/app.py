@@ -139,12 +139,22 @@ def css(rtl: bool) -> str:
           font-size: 12px; background: #f0efec; color: #52514e; white-space: nowrap; }}
   .late {{ color: #c2410c; font-weight: 650; }}
 
-  .barrow {{ display: flex; align-items: center; gap: 10px; margin: 7px 0; }}
-  .barlab {{ flex: 0 0 40%; font-size: 13px; color: #0b0b0b; }}
-  .bartrack {{ flex: 1; height: 9px; border-radius: 999px; background: #f0efec; }}
-  .barfill {{ height: 9px; border-radius: 999px; background: #2a78d6; }}
-  .barval {{ flex: 0 0 58px; text-align: {far}; font-size: 12.5px; color: #52514e;
+  /* Label ABOVE a full-width bar, not beside it. Side by side, the label column
+     was a fixed percentage that could not shrink, so at phone width the row
+     overflowed its container and the Hebrew area and people names were clipped
+     away -- the bar was all you could see. Stacked, nothing competes for
+     horizontal space and the label can wrap, at any width and in either
+     direction. space-between puts the value at the far end without needing to
+     know which end that is. */
+  .barrow {{ margin: 11px 0; }}
+  .barhead {{ display: flex; justify-content: space-between; align-items: baseline;
+             gap: 10px; margin-bottom: 5px; }}
+  .barlab {{ font-size: 13.5px; font-weight: 600; color: #0b0b0b; min-width: 0;
+            overflow-wrap: anywhere; }}
+  .barval {{ flex: 0 0 auto; font-size: 12.5px; color: #52514e; white-space: nowrap;
             font-variant-numeric: tabular-nums; }}
+  .bartrack {{ width: 100%; height: 9px; border-radius: 999px; background: #f0efec; }}
+  .barfill {{ height: 9px; border-radius: 999px; background: #2a78d6; }}
 
   .kpi {{ border: 1px solid #e4e3df; border-radius: 13px; padding: 10px 4px;
          text-align: center; background: #fff; }}
@@ -154,7 +164,7 @@ def css(rtl: bool) -> str:
 
   @media (max-width: 480px) {{
     .block-container {{ padding-left: .6rem; padding-right: .6rem; }}
-    .barlab {{ flex: 0 0 48%; font-size: 12.5px; }}
+    .barlab {{ font-size: 13px; }}
     .kpi .n {{ font-size: 20px; }}  .kpi .l {{ font-size: 10px; }}
   }}
 </style>"""
@@ -171,9 +181,11 @@ def chip(status: str, lang: str) -> str:
 
 def bar(label: str, done: int, total: int) -> str:
     pct = (100 * done / total) if total else 0
-    return (f'<div class="barrow"><div class="barlab">{esc(label)}</div>'
-            f'<div class="bartrack"><div class="barfill" style="width:{pct:.0f}%"></div>'
-            f'</div><div class="barval">{done}/{total}</div></div>')
+    return (f'<div class="barrow"><div class="barhead">'
+            f'<span class="barlab">{esc(label)}</span>'
+            f'<span class="barval">{done}/{total} · {pct:.0f}%</span></div>'
+            f'<div class="bartrack">'
+            f'<div class="barfill" style="width:{pct:.0f}%"></div></div></div>')
 
 
 def kpi(n, label, color="#0b0b0b") -> str:
