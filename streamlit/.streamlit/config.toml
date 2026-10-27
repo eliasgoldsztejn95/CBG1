@@ -1,10 +1,7 @@
-[theme]
-base = "light"
-primaryColor = "#2a78d6"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f6f6f4"
-textColor = "#0b0b0b"
-font = "sans serif"
+# No [theme] block on purpose. Pinning base/background/text here forces one theme
+# and REMOVES the viewer's theme control entirely -- which is what hid dark mode.
+# Streamlit now follows the viewer's own setting, and app.py reads the active theme
+# back through st.context.theme so the cards it paints match the chrome.
 
 [server]
 headless = true
