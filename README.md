@@ -1,102 +1,187 @@
-# לוח משימות הפרויקט · Project task board
+# מדריך שימוש · לוח משימות הפרויקט
 
-A Streamlit board replacing `cbg1.xlsx`. Hebrew/English, phone-first, anyone may
-edit, every edit stamped with who made it.
+מדריך לכל מי שמשתמש בלוח. אין כאן התקנה או הגדרות — אלה נמצאים ב-`README.md`.
 
-```
-app.py              the board
-i18n.py             Hebrew/English strings and vocabularies
-storage.py          Google Sheets backend + local CSV fallback
-import_excel.py     cbg1.xlsx  -> tasks_seed.csv, people_seed.csv
-bootstrap_sheet.py  seed CSVs  -> the shared Google Sheet (run once)
-```
+---
 
-## Run it locally
+## מה זה
 
-```bash
-pip install -r requirements.txt
-python3 -m streamlit run app.py
-```
+הלוח מחליף את הקובץ `cbg1.xlsx`. הוא מציג את כל תתי־המשימות של הפרויקט, מי אחראי
+על כל אחת, מה הסטטוס שלה ומתי מועד היעד. **כל אחד יכול לערוך** — אין סיסמאות.
 
-With no secrets configured it reads and writes `tasks_seed.csv` on disk and says
-so at the top of the page. That is for development only — see the warning below.
+הלוח בנוי קודם כול לטלפון: הכול בעמודה אחת, בלי טבלאות רחבות שצריך לגלול לצדדים.
 
-## Deploy it so the team can use it
+## פתיחה
 
-### 1. Create the sheet
+פותחים את הקישור בדפדפן, בטלפון או במחשב. כדאי להוסיף אותו למסך הבית בטלפון —
+הוא ייראה ויתנהג כמו אפליקציה.
 
-Make a Google Sheet, note the id from its URL
-(`docs.google.com/spreadsheets/d/<THIS>/edit`).
+## שני דברים לעשות פעם אחת
 
-### 2. Create a service account
+**שפה** — בורר בראש העמוד, עברית או English. הכיווניות מתהפכת יחד עם השפה.
 
-In Google Cloud Console: enable the **Google Sheets API** and **Google Drive API**,
-create a service account, add a JSON key, download it. Then **share the sheet with
-the service account's email address, as Editor** — this is the step people miss;
-without it every read returns a permissions error.
+**מי אתם** — בחרו את שמכם מהרשימה שלידו. השם נשמר ומסומן על כל שינוי שתעשו,
+כדי שיהיה ברור מי עדכן מה. **בלי זה אי אפשר לערוך** — תופיע הודעה שמבקשת לבחור שם.
 
-### 3. Load the data, once
+השם הוא על בסיס אמון: אין סיסמה, וכל אחד יכול לבחור כל שם. הוא מתעד מי *אמר*
+שהוא ביצע שינוי.
 
-```bash
-export SHEET_KEY=<the id from the URL>
-export GOOGLE_APPLICATION_CREDENTIALS=service_account.json
-python3 import_excel.py        # only if cbg1.xlsx changed
-python3 bootstrap_sheet.py
-```
+---
 
-### 4. Deploy
+## ארבע הלשוניות
 
-Push to GitHub, then on [share.streamlit.io](https://share.streamlit.io) point a new
-app at `src/streamlit/app.py`. In **Settings → Secrets** paste:
+### סקירה
+תמונת מצב כללית: כמה משימות יש, כמה הושלמו, כמה בעבודה, כמה חסומות וכמה באיחור.
+מתחת — התקדמות לפי תחום, מקרא הסטטוסים, ורשימת חברי הצוות עם התפקיד והיקף העבודה.
 
-```toml
-sheet_key = "<the id from the URL>"
+### משימות
+הרשימה המלאה, עם סינון לפי תחום, אחראי, סטטוס, חיפוש חופשי, ו״רק באיחור״.
+מכאן גם מוסיפים משימה חדשה.
 
-[gcp_service_account]
-type = "service_account"
-project_id = "..."
-private_key_id = "..."
-private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-client_email = "...@....iam.gserviceaccount.com"
-client_id = "..."
-token_uri = "https://oauth2.googleapis.com/token"
-```
+### לפי אחראי
+**מי אחראי על מה.** המשימות מקובצות לפי אדם, ממי שיש לו הכי הרבה ומטה.
+הקטע שלכם נפתח אוטומטית. משימה שרשומה על שני אנשים מופיעה אצל שניהם.
 
-(Copy the fields straight out of the JSON key. Keep the `\n` escapes in
-`private_key`.) The header of the app will then read **Google Sheets — משותף**.
+### לוח זמנים
+אותן משימות, מסודרות לפי דחיפות: באיחור ← תוך שבוע ← תוך חודש ← מאוחר יותר ←
+ללא מועד ← הושלמו.
 
-> **Never commit `service_account.json`.** Add it to `.gitignore`. Anyone holding
-> that file can read and write the sheet.
+---
 
-## Things worth knowing before you change it
+## הסטטוסים
 
-**The local CSV backend is not shared.** On Streamlit Community Cloud the disk is
-wiped on restart and is not shared between viewers, so edits would be silently
-lost. The app shows a yellow warning whenever it is on that backend, rather than
-looking like it works. Only Google Sheets is safe for real use.
+| | סטטוס | פירוש |
+|---|---|---|
+| ✓ | הושלם | נגמר. לא נספר כפתוח ולא יכול להיות באיחור. |
+| ◐ | בעבודה | מישהו עובד על זה עכשיו. |
+| ✕ | חסום | משהו עוצר את זה. כדאי לכתוב בהערות מה. |
+| ○ | טרם התחיל | מתוכנן, טרם התחיל. |
+| ? | לא דווח | אף אחד לא עדכן. זה לא אומר שלא נעשה — זה אומר שלא יודעים. |
 
-**Hebrew is the stored form.** Statuses and areas live in the sheet in Hebrew;
-English is a display layer (`i18n.py`). Switching language never rewrites the
-sheet, so two people on different languages cannot fight over stored values. Task
-titles, deliverables, notes and people's names are free text and are *not*
-translated — they render as somebody typed them, in both languages.
+לכל סטטוס יש **גם סימן וגם מילה**, ולא רק צבע. זה מכוון: הצבעים של ״הושלם״
+ו״חסום״ נראים כמעט זהים לחלק מהאנשים עם עיוורון צבעים, ולכן הצבע לעולם אינו
+הדבר היחיד שמבדיל ביניהם.
 
-**Status is never colour alone.** On this palette "done" (`#0ca30c`) and "blocked"
-(`#d03b3b`) measure ΔE 4.1 apart in OKLab under protanopia/deuteranopia —
-indistinguishable to most colourblind viewers. Every status therefore carries an
-icon and its word, and no chart encodes status by hue: the bars measure progress
-and counts. Keep it that way if you add views.
+**באיחור** אינו סטטוס אלא חישוב: מועד היעד עבר והמשימה אינה מסומנת כהושלמה.
+היא מופיעה באדום עם מספר הימים.
 
-**Writes are per row.** `storage.upsert_task` rewrites only the row that changed,
-re-reading the id column at write time. Rewriting the whole sheet from the
-snapshot taken at page load would throw away anything saved in between.
+---
 
-**Ids are max+1.** Deleting a middle task is safe. Deleting the *highest* id frees
-that number for reuse — see the note in `storage.next_id` if that starts to matter.
+## עריכה
 
-## Not covered
+1. לשונית **משימות** (או כל לשונית אחרת שבה המשימה מופיעה).
+2. מתחת לכרטיס המשימה — **עריכה · T07**.
+3. משנים מה שצריך ולוחצים **שמירה**.
 
-- No undo. Google Sheets' own version history is the backstop (File → Version
-  history), which is one reason to prefer it.
-- The name picker is honour-system, as asked: anyone can pick any name. It records
-  who *said* they made a change, not who did.
+הכול ניתן לעריכה: סטטוס, אחראי, מועד יעד, תחום, שם המשימה, התוצר הצפוי, התלויות
+וההערות. אם למשימה אין מועד יעד, מסמנים ״ללא מועד יעד״.
+
+אחרי שמירה הכרטיס מציג מי עדכן ומתי.
+
+## הוספת משימה
+
+בתחתית לשונית **משימות**, תחת **➕ הוספת משימה**. חובה למלא שם; השאר אפשרי.
+המזהה (T16, T17...) נוצר אוטומטית.
+
+## מחיקה
+
+בתוך **עריכה**, פותחים **מחיקה**, מסמנים **לאשר מחיקה** ואז לוחצים על הכפתור.
+שני שלבים בכוונה — משימות אחרות עשויות להיות תלויות בזו.
+
+**אין ביטול בלוח עצמו.** אם נמחק משהו בטעות אפשר לשחזר מהמקור שבו הנתונים
+נשמרים — היסטוריית הקומיטים ב-GitHub, או היסטוריית הגרסאות של גיליון Google.
+פנו למי שמתחזק את הלוח.
+
+---
+
+## כמה דברים שכדאי לדעת
+
+**העדכון אינו מיידי אצל אחרים.** הנתונים נשמרים במטמון לדקה. מי שצופה בלוח ברגע
+שעדכנתם יראה את השינוי תוך כדקה, או מיד אם ילחץ **רענון**.
+
+**שני אנשים שעורכים בו־זמנית** — נשמרת רק השורה שהשתנתה, כך ששינויים במשימות
+שונות אינם דורסים זה את זה. שני אנשים שעורכים *את אותה משימה* באותו רגע — האחרון
+ששמר מנצח.
+
+**מה לא מתורגם.** שמות המשימות, התוצרים, ההערות ושמות האנשים מוצגים בדיוק כפי
+שנכתבו, גם במצב אנגלית. רק ממשק הלוח, הסטטוסים והתחומים מתורגמים. טקסט שנכתב
+בעברית יישאר בעברית.
+
+**איפה הנתונים.** בקובץ משותף (GitHub או גיליון Google, לפי ההגדרה). הלוח הוא
+דרך נוחה לקרוא ולערוך אותו, והמקור עצמו תמיד זמין אם צריך.
+
+---
+---
+
+# Usage guide · Project task board
+
+For anyone using the board. Installation and configuration are in `README.md`.
+
+## What it is
+
+Replaces `cbg1.xlsx`. Shows every subtask, who owns it, its status and its due
+date. **Anyone can edit** — there are no passwords. Built for a phone first:
+one column, no wide tables.
+
+## Two things to do once
+
+**Language** — the picker at the top, עברית or English. Text direction flips with it.
+
+**Who you are** — pick your name next to it. It's remembered and stamped on
+anything you change. **You can't edit without it.** It's honour-system: no
+password, anyone can pick any name. It records who *said* they made a change.
+
+## The four tabs
+
+- **Overview** — totals (done / active / blocked / overdue), progress per area,
+  the status legend, and the team roster with roles and capacity.
+- **Tasks** — the full list. Filter by area, owner, status, free text, or overdue
+  only. Add new tasks from the bottom.
+- **By owner** — *who is in charge of what*, grouped by person, busiest first.
+  Your own section opens automatically. A task owned by two people shows under both.
+- **Timeline** — by urgency: overdue → within a week → within a month → later →
+  no date → done.
+
+## Statuses
+
+| | Status | Meaning |
+|---|---|---|
+| ✓ | Done | Finished. Never counts as open or overdue. |
+| ◐ | In progress | Someone is working on it now. |
+| ✕ | Blocked | Something is stopping it — say what in the notes. |
+| ○ | Not started | Planned, not begun. |
+| ? | Not reported | Nobody has updated it. Not the same as "no progress". |
+
+Each status carries **an icon and a word**, not just a colour — deliberately:
+"done" and "blocked" look nearly identical to many colourblind viewers, so colour
+is never the only thing telling them apart.
+
+**Overdue** isn't a status, it's computed: the due date has passed and the task
+isn't done. It shows in red with the number of days.
+
+## Editing, adding, deleting
+
+Open **Edit · T07** under any task card, change what you need, press **Save**.
+Everything is editable. Tick "No due date" to clear a date.
+
+Add via **➕ Add task** at the bottom of the Tasks tab — only the title is
+required; the id (T16, T17…) is assigned automatically.
+
+Delete is inside **Edit → Delete**, behind a confirmation tick — two steps on
+purpose, since other tasks may depend on this one. **There is no undo in the board**;
+recover from wherever the data is kept — the commit history on GitHub, or the Google
+Sheet's version history. Ask whoever maintains the board.
+
+## Worth knowing
+
+- **Edits aren't instant for others.** Data is cached for a minute; others see
+  your change within about a minute, or immediately if they press **Refresh**.
+- **Concurrent edits**: only the changed row is written, so edits to *different*
+  tasks never overwrite each other. Two people editing the *same* task at the same
+  moment — last save wins.
+- **Not translated**: task titles, deliverables, notes and people's names render
+  exactly as typed, in both languages. Only the interface, statuses and areas are
+  translated.
+- **Where the data lives**: a shared file (GitHub or a Google Sheet, depending on
+  setup). The board is a convenient way to read and edit it; the source itself is
+  always there if you need it.
